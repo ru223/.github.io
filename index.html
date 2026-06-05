@@ -1,0 +1,364 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.app { padding: 1rem 0; }
+.tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; border-bottom: 0.5px solid var(--color-border-tertiary); padding-bottom: 0; }
+.tab { padding: 8px 16px; font-size: 14px; cursor: pointer; border: none; background: none; color: var(--color-text-secondary); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+.tab.active { color: var(--color-text-primary); border-bottom-color: var(--color-text-primary); font-weight: 500; }
+.tab:hover:not(.active) { color: var(--color-text-primary); }
+.section { display: none; }
+.section.active { display: block; }
+.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+.metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 1rem; }
+.metric-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+.metric-value { font-size: 22px; font-weight: 500; }
+.metric-value.income { color: #1D9E75; }
+.metric-value.expense { color: #D85A30; }
+.metric-value.balance.pos { color: #1D9E75; }
+.metric-value.balance.neg { color: #D85A30; }
+.form-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1.5rem; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 2fr 1fr 1.2fr; gap: 12px; margin-bottom: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-label { font-size: 12px; color: var(--color-text-secondary); }
+input, select { width: 100%; font-size: 14px; padding: 8px 10px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-primary); color: var(--color-text-primary); height: 36px; }
+input:focus, select:focus { outline: none; border-color: var(--color-border-primary); }
+.btn-add { width: 100%; height: 36px; background: var(--color-text-primary); color: var(--color-background-primary); border: none; border-radius: var(--border-radius-md); font-size: 14px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
+.btn-add:hover { opacity: 0.8; }
+.entries-list { display: flex; flex-direction: column; gap: 6px; }
+.entry-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); }
+.entry-date { font-size: 12px; color: var(--color-text-secondary); min-width: 60px; }
+.entry-cat { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--color-background-secondary); color: var(--color-text-secondary); min-width: 60px; text-align: center; }
+.entry-note { font-size: 13px; color: var(--color-text-primary); flex: 1; }
+.entry-amount { font-size: 14px; font-weight: 500; min-width: 80px; text-align: right; }
+.entry-amount.income { color: #1D9E75; }
+.entry-amount.expense { color: #D85A30; }
+.entry-del { background: none; border: none; color: var(--color-text-secondary); cursor: pointer; font-size: 16px; padding: 0 4px; opacity: 0.5; }
+.entry-del:hover { opacity: 1; color: #D85A30; }
+.empty-state { text-align: center; padding: 3rem; color: var(--color-text-secondary); font-size: 14px; }
+.chart-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+.chart-title { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem; font-weight: 500; }
+.bar-chart { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-label { font-size: 12px; color: var(--color-text-secondary); min-width: 70px; text-align: right; }
+.bar-track { flex: 1; height: 20px; background: var(--color-background-secondary); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.bar-val { font-size: 12px; color: var(--color-text-secondary); min-width: 70px; }
+.month-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
+.month-nav button { background: none; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 6px 12px; cursor: pointer; color: var(--color-text-primary); font-size: 14px; }
+.month-nav button:hover { background: var(--color-background-secondary); }
+.month-label { font-size: 16px; font-weight: 500; flex: 1; text-align: center; }
+.filter-row { display: flex; gap: 8px; margin-bottom: 1rem; align-items: center; }
+.filter-row select { max-width: 140px; }
+.no-entries { font-size: 13px; color: var(--color-text-secondary); text-align: center; padding: 1.5rem; }
+</style>
+
+<div class="app">
+  <h2 class="sr-only">家計簿アプリ</h2>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('home')"><i class="ti ti-home" aria-hidden="true"></i> ホーム</button>
+    <button class="tab" onclick="showTab('add')"><i class="ti ti-plus" aria-hidden="true"></i> 入力</button>
+    <button class="tab" onclick="showTab('history')"><i class="ti ti-list" aria-hidden="true"></i> 明細</button>
+    <button class="tab" onclick="showTab('chart')"><i class="ti ti-chart-bar" aria-hidden="true"></i> グラフ</button>
+  </div>
+
+  <div id="tab-home" class="section active">
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+      <div class="month-label" id="month-label">2025年6月</div>
+      <button onclick="changeMonth(1)"><i class="ti ti-chevron-right"></i></button>
+    </div>
+    <div class="summary-grid">
+      <div class="metric">
+        <div class="metric-label">収入</div>
+        <div class="metric-value income" id="sum-income">¥0</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">支出</div>
+        <div class="metric-value expense" id="sum-expense">¥0</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">収支</div>
+        <div class="metric-value balance" id="sum-balance">¥0</div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">カテゴリ別支出</div>
+      <div class="bar-chart" id="cat-bars"><div class="no-entries">まだデータがありません</div></div>
+    </div>
+  </div>
+
+  <div id="tab-add" class="section">
+    <div class="form-card">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">種別</label>
+          <select id="in-type">
+            <option value="expense">支出</option>
+            <option value="income">収入</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">日付</label>
+          <input type="date" id="in-date" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">カテゴリ</label>
+          <select id="in-cat"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">金額（円）</label>
+          <input type="number" id="in-amount" placeholder="0" min="0" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label class="form-label">メモ</label>
+        <input type="text" id="in-note" placeholder="例：スーパーで買い物" />
+      </div>
+      <button class="btn-add" onclick="addEntry()"><i class="ti ti-plus" aria-hidden="true"></i> 追加する</button>
+    </div>
+  </div>
+
+  <div id="tab-history" class="section">
+    <div class="filter-row">
+      <div class="month-nav" style="margin:0; flex:1;">
+        <button onclick="changeMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+        <div class="month-label" id="month-label2">2025年6月</div>
+        <button onclick="changeMonth(1)"><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <select id="filter-type" onchange="renderHistory()" style="max-width:100px;">
+        <option value="all">すべて</option>
+        <option value="expense">支出</option>
+        <option value="income">収入</option>
+      </select>
+    </div>
+    <div class="entries-list" id="entries-list"></div>
+  </div>
+
+  <div id="tab-chart" class="section">
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+      <div class="month-label" id="month-label3">2025年6月</div>
+      <button onclick="changeMonth(1)"><i class="ti ti-chevron-right"></i></button>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">月別収支</div>
+      <div style="position:relative;width:100%;height:220px;"><canvas id="monthly-chart" role="img" aria-label="月別収支グラフ">月別の収入・支出グラフ</canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">支出カテゴリ内訳</div>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <div style="position:relative;width:160px;height:160px;flex-shrink:0;"><canvas id="pie-chart" role="img" aria-label="支出カテゴリ円グラフ">カテゴリ別支出</canvas></div>
+        <div id="pie-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const CATS_EXPENSE = ['食費','交通費','住居費','光熱費','通信費','医療費','娯楽費','衣服','教育費','その他'];
+const CATS_INCOME = ['給与','副業','贈与','その他収入'];
+const CAT_COLORS_EXP = ['#1D9E75','#378ADD','#D85A30','#BA7517','#533AB7','#D4537E','#639922','#888780','#985A30','#5F5E5A'];
+const CAT_COLORS_INC = ['#1D9E75','#378ADD','#BA7517','#888780'];
+
+let entries = JSON.parse(localStorage.getItem('kakeibo_entries') || '[]');
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth() + 1;
+let monthlyChart = null;
+let pieChart = null;
+
+function save() { try { localStorage.setItem('kakeibo_entries', JSON.stringify(entries)); } catch(e) {} }
+
+function fmt(n) { return '¥' + Math.round(n).toLocaleString('ja-JP'); }
+
+function getMonthEntries() {
+  return entries.filter(e => {
+    const d = new Date(e.date);
+    return d.getFullYear() === currentYear && d.getMonth() + 1 === currentMonth;
+  });
+}
+
+function updateMonthLabels() {
+  const s = `${currentYear}年${currentMonth}月`;
+  ['month-label','month-label2','month-label3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = s;
+  });
+}
+
+function changeMonth(d) {
+  currentMonth += d;
+  if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+  if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+  updateMonthLabels();
+  renderAll();
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['home','add','history','chart'][i] === name));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'chart') renderCharts();
+}
+
+function updateCatSelect() {
+  const type = document.getElementById('in-type').value;
+  const cats = type === 'expense' ? CATS_EXPENSE : CATS_INCOME;
+  const sel = document.getElementById('in-cat');
+  sel.innerHTML = cats.map(c => `<option>${c}</option>`).join('');
+}
+document.getElementById('in-type').addEventListener('change', updateCatSelect);
+updateCatSelect();
+
+const today = new Date().toISOString().slice(0,10);
+document.getElementById('in-date').value = today;
+
+function addEntry() {
+  const type = document.getElementById('in-type').value;
+  const date = document.getElementById('in-date').value;
+  const cat = document.getElementById('in-cat').value;
+  const amount = parseFloat(document.getElementById('in-amount').value);
+  const note = document.getElementById('in-note').value.trim();
+  if (!date || isNaN(amount) || amount <= 0) { alert('日付と金額を入力してください'); return; }
+  entries.push({ id: Date.now(), type, date, cat, amount, note });
+  save();
+  document.getElementById('in-amount').value = '';
+  document.getElementById('in-note').value = '';
+  renderAll();
+  showTab('history');
+}
+
+function deleteEntry(id) {
+  entries = entries.filter(e => e.id !== id);
+  save();
+  renderAll();
+}
+
+function renderSummary() {
+  const mes = getMonthEntries();
+  const income = mes.filter(e => e.type === 'income').reduce((s,e) => s + e.amount, 0);
+  const expense = mes.filter(e => e.type === 'expense').reduce((s,e) => s + e.amount, 0);
+  const bal = income - expense;
+  document.getElementById('sum-income').textContent = fmt(income);
+  document.getElementById('sum-expense').textContent = fmt(expense);
+  const bEl = document.getElementById('sum-balance');
+  bEl.textContent = fmt(bal);
+  bEl.className = 'metric-value balance ' + (bal >= 0 ? 'pos' : 'neg');
+}
+
+function renderCatBars() {
+  const mes = getMonthEntries().filter(e => e.type === 'expense');
+  const totals = {};
+  mes.forEach(e => { totals[e.cat] = (totals[e.cat] || 0) + e.amount; });
+  const sorted = Object.entries(totals).sort((a,b) => b[1]-a[1]);
+  const el = document.getElementById('cat-bars');
+  if (!sorted.length) { el.innerHTML = '<div class="no-entries">支出データがありません</div>'; return; }
+  const max = sorted[0][1];
+  el.innerHTML = sorted.map(([cat, amt]) => {
+    const pct = Math.round(amt / max * 100);
+    const ci = CATS_EXPENSE.indexOf(cat);
+    const col = ci >= 0 ? CAT_COLORS_EXP[ci] : '#888780';
+    return `<div class="bar-row">
+      <div class="bar-label">${cat}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div class="bar-val">${fmt(amt)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderHistory() {
+  const filterType = document.getElementById('filter-type').value;
+  let mes = getMonthEntries();
+  if (filterType !== 'all') mes = mes.filter(e => e.type === filterType);
+  mes.sort((a,b) => b.date.localeCompare(a.date));
+  const el = document.getElementById('entries-list');
+  if (!mes.length) { el.innerHTML = '<div class="no-entries">この月のデータがありません</div>'; return; }
+  el.innerHTML = mes.map(e => {
+    const sign = e.type === 'income' ? '+' : '-';
+    const d = e.date.slice(5).replace('-','/');
+    return `<div class="entry-item">
+      <div class="entry-date">${d}</div>
+      <div class="entry-cat">${e.cat}</div>
+      <div class="entry-note">${e.note || '—'}</div>
+      <div class="entry-amount ${e.type}">${sign}${fmt(e.amount)}</div>
+      <button class="entry-del" onclick="deleteEntry(${e.id})" aria-label="削除"><i class="ti ti-trash" aria-hidden="true"></i></button>
+    </div>`;
+  }).join('');
+}
+
+function renderCharts() {
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    let m = currentMonth - i;
+    let y = currentYear;
+    while (m < 1) { m += 12; y--; }
+    months.push({ y, m, label: `${y}/${String(m).padStart(2,'0')}` });
+  }
+  const incomes = months.map(({ y, m }) =>
+    entries.filter(e => { const d = new Date(e.date); return d.getFullYear()===y && d.getMonth()+1===m && e.type==='income'; }).reduce((s,e)=>s+e.amount,0)
+  );
+  const exps = months.map(({ y, m }) =>
+    entries.filter(e => { const d = new Date(e.date); return d.getFullYear()===y && d.getMonth()+1===m && e.type==='expense'; }).reduce((s,e)=>s+e.amount,0)
+  );
+
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+  const textColor = isDark ? '#888' : '#888';
+
+  if (monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart(document.getElementById('monthly-chart'), {
+    type: 'bar',
+    data: {
+      labels: months.map(x => x.label),
+      datasets: [
+        { label: '収入', data: incomes, backgroundColor: '#5DCAA5', borderRadius: 4 },
+        { label: '支出', data: exps, backgroundColor: '#F0997B', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: textColor, boxWidth: 10, font: { size: 12 } } } },
+      scales: {
+        x: { ticks: { color: textColor, font: { size: 11 } }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor, font: { size: 11 }, callback: v => '¥' + v.toLocaleString() }, grid: { color: gridColor } }
+      }
+    }
+  });
+
+  const mes = getMonthEntries().filter(e => e.type === 'expense');
+  const totals = {};
+  mes.forEach(e => { totals[e.cat] = (totals[e.cat] || 0) + e.amount; });
+  const cats = Object.keys(totals);
+  const vals = cats.map(c => totals[c]);
+  const colors = cats.map(c => { const i = CATS_EXPENSE.indexOf(c); return i >= 0 ? CAT_COLORS_EXP[i] : '#888'; });
+  const total = vals.reduce((a,b)=>a+b,0);
+
+  if (pieChart) pieChart.destroy();
+  if (cats.length) {
+    pieChart = new Chart(document.getElementById('pie-chart'), {
+      type: 'doughnut',
+      data: { labels: cats, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 1, borderColor: isDark ? '#1a1a1a' : '#fff' }] },
+      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, cutout: '55%' }
+    });
+    document.getElementById('pie-legend').innerHTML = cats.map((c,i) =>
+      `<span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:${colors[i]};flex-shrink:0;"></span><span style="color:var(--color-text-secondary)">${c}</span><span style="font-weight:500;color:var(--color-text-primary);margin-left:auto">${total ? Math.round(vals[i]/total*100) : 0}%</span></span>`
+    ).join('');
+  } else {
+    document.getElementById('pie-legend').innerHTML = '<span style="color:var(--color-text-secondary)">データがありません</span>';
+  }
+}
+
+function renderAll() {
+  renderSummary();
+  renderCatBars();
+  renderHistory();
+}
+
+updateMonthLabels();
+renderAll();
+</script>
